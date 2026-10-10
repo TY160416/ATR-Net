@@ -34,7 +34,7 @@ with tf.device('/GPU:0'):
         test_start = '2024-01-01'
         test_end = '2025-09-29'
 
-        # 划分数据集
+
         train_data_raw = dataframe[(dataframe['Date'] >= train_start) & (dataframe['Date'] <= train_end)]
         val_data_raw = dataframe[(dataframe['Date'] >= val_start) & (dataframe['Date'] <= val_end)]
         test_data_raw = dataframe[(dataframe['Date'] >= test_start) & (dataframe['Date'] <= test_end)]

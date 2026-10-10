@@ -17,7 +17,6 @@ with tf.device('/GPU:0'):
 
 
     class InceptionBlockV1(tf.keras.layers.Layer):
-        """参数高效的 2D Inception 模块"""
 
         def __init__(self, out_channels, num_kernels=3, **kwargs):
             super(InceptionBlockV1, self).__init__(**kwargs)
@@ -43,7 +42,6 @@ with tf.device('/GPU:0'):
             res = []
             for conv in self.convs:
                 res.append(conv(x, training=training))
-            # 聚合多个卷积核结果
             return tf.reduce_mean(tf.stack(res, axis=0), axis=0)
 
 
@@ -83,31 +81,27 @@ with tf.device('/GPU:0'):
                 top_index = tf.cast(top_indices[i], tf.int32)
                 period = tf.cast(T // tf.math.maximum(top_index, 1), tf.int32)
 
-                # 填充以满足 2D reshape 要求
                 pad_len = tf.math.floormod(T, period)
                 pad_len = tf.where(pad_len == 0, 0, period - pad_len)
                 paddings = tf.stack([[0, 0], [0, pad_len], [0, 0]])
                 out = tf.pad(x, paddings)
 
-                # 转化为 2D 表示
                 shape_in = tf.stack([B, -1, period, C])
                 out = tf.reshape(out, shape_in)
 
-                # 2D 卷积提取变异性
                 out = self.conv1(out, training=training)
                 out = self.gelu(out)
                 out = self.conv2(out, training=training)
 
-                # 转回 1D
                 shape_out = tf.stack([B, -1, self.d_model])
                 out = tf.reshape(out, shape_out)
-                out = out[:, :T, :]  # 截断填充部分
+                out = out[:, :T, :]
                 res.append(out)
 
                 weight = amp_mean[:, top_index]
                 period_weights.append(weight)
 
-            res = tf.stack(res, axis=-1)  # [B, T, d_model, k]
+            res = tf.stack(res, axis=-1)
 
             period_weights = tf.stack(period_weights, axis=-1)
             period_weights = tf.nn.softmax(period_weights, axis=-1)
@@ -127,11 +121,9 @@ with tf.device('/GPU:0'):
             self.seq_len = seq_len
             self.pred_len = pred_len
 
-            # 简易特征嵌入与预测时长拓展
             self.enc_embedding = tf.keras.layers.Dense(d_model)
             self.predict_linear = tf.keras.layers.Dense(seq_len + pred_len)
 
-            # 堆叠多层 TimesBlock
             self.times_blocks = []
             for _ in range(e_layers):
                 self.times_blocks.append(TimesBlock(
@@ -173,7 +165,6 @@ with tf.device('/GPU:0'):
 
 
     def TimesNet_time():
-        # 数据加载及预处理
         dataframe = pd.read_csv('HSI_data1.csv', usecols=['Date', 'Close'], header=0, engine='python')
         dataframe['Date'] = pd.to_datetime(dataframe['Date'])
 

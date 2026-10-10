@@ -102,13 +102,12 @@ with tf.device('/GPU:0'):
             return output, attention_weights
 
         def split_heads(self, x, batch_size):
-            """将最后的维度分割为 (num_heads, depth)"""
             x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
             return tf.transpose(x, perm=[0, 2, 1, 3])
 
         def scaled_dot_product_attention(self, q, k, v, mask=None):
 
-            matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
+            matmul_qk = tf.matmul(q, k, transpose_b=True)
 
             dk = tf.cast(tf.shape(k)[-1], tf.float32)
             scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
@@ -116,9 +115,9 @@ with tf.device('/GPU:0'):
             if mask is not None:
                 scaled_attention_logits += (mask * -1e9)
 
-            attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
+            attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)
 
-            output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
+            output = tf.matmul(attention_weights, v)
 
             return output, attention_weights
 

@@ -183,18 +183,14 @@ with tf.device('/GPU:0'):
 
         x = Dense(256)(inputs)
 
-        # 位置编码
         positional_encoding = PositionalEncoding(look_back, 256)
         x = positional_encoding(x)
 
-        # Transformer块
         transformer_block1, attn_weights1 = TransformerBlock(d_model=256, num_heads=2, dff=4, rate=0.1)(x, training=True)
         transformer_block1 = Dropout(0.01)(transformer_block1)
 
         x = tf.reduce_mean(transformer_block1, axis=1)
 
-
-        # 输出层
         main_output = Dense(1, activation='linear', name='main_output')(x)
 
         model = Model(inputs=[inputs], outputs=[main_output])
@@ -248,7 +244,6 @@ with tf.device('/GPU:0'):
             ss_tot = np.sum((targets - np.mean(targets)) ** 2)
             return 1 - (ss_res / (ss_tot))
 
-        # 输出评估结果
         print("\n" + "=" * 50)
         print("Transformer模型评估结果")
         print("=" * 50)

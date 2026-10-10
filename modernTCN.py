@@ -267,16 +267,12 @@ with tf.device('/GPU:0'):
         print(f"MAPE: {mape(testPredict, testY_orig):.6f}%")
         print(f"R²: {r_square(testPredict, testY_orig):.6f}")
 
-        # ------------------ 新增：保存预测结果至 CSV ------------------
-        # 获取测试集对应的时间戳（由于 look_back=10，前 10 个数据作为历史窗口被截除）
         test_dates = test_data_raw['Date'].iloc[look_back:].dt.strftime('%Y/%m/%d').values
 
-        # 展平数组以便于构建 DataFrame
         actual_vals = testY_orig.flatten()
         predicted_vals = testPredict.flatten()
         errors = actual_vals - predicted_vals
 
-        # 构建 DataFrame
         results_df = pd.DataFrame({
             'Data': test_dates,
             'Actual': actual_vals,

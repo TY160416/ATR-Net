@@ -1,23 +1,6 @@
-import numpy
-import time
-from keras.models import *
-from sklearn.preprocessing import MinMaxScaler
-import pandas as pd
-from keras import regularizers
-import numpy as np
-from A_TCN import TCN
 import tensorflow as tf
-
-np.random.seed(500)
-numpy.set_printoptions(suppress=True)
-
-import os
-
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-from keras.layers import add, Input, Conv1D, Activation, Flatten, Dense, Dropout, Layer, Lambda, Reshape, \
-    TimeDistributed
+from tensorflow.keras.layers import Dense, Dropout, Layer, Reshape
+from A_TCN import TCN
 
 with tf.device('/GPU:0'):
     start_time = time.time()
@@ -80,7 +63,7 @@ with tf.device('/GPU:0'):
 
     def TCN_time():
         # Read data, including Date and Close columns
-        dataframe = pd.read_csv('SSE_data1.csv', usecols=['Date', 'Close'], header=0, engine='python')
+        dataframe = pd.read_csv('NASDAQ_data1.csv', usecols=['Date', 'Close'], header=0, engine='python')
 
         # Ensure the Date column is of datetime type
         dataframe['Date'] = pd.to_datetime(dataframe['Date'])
@@ -592,7 +575,7 @@ with tf.device('/GPU:0'):
 
         # Compile the model
         optimizer = tf.keras.optimizers.Adam(
-            learning_rate=0.001,
+            learning_rate=0.005,
             beta_1=0.9,
             beta_2=0.995,
             epsilon=1e-8
@@ -620,50 +603,3 @@ with tf.device('/GPU:0'):
         trainPredict = model.predict(trainX)
         valPredict = model.predict(valX)
         testPredict = model.predict(testX)
-
-        # Inverse transformations
-        trainPredict = scaler.inverse_transform(trainPredict)
-        trainY_orig = scaler.inverse_transform(trainY.reshape(-1, 1))
-        valPredict = scaler.inverse_transform(valPredict)
-        valY_orig = scaler.inverse_transform(valY.reshape(-1, 1))
-        testPredict = scaler.inverse_transform(testPredict)
-        testY_orig = scaler.inverse_transform(testY.reshape(-1, 1))
-
-
-        # Calculate evaluation metrics
-        def rmse(predictions, targets):
-            return numpy.sqrt(((predictions - targets) ** 2).mean())
-
-        def mae(predictions, targets):
-            return np.mean(np.abs(predictions - targets))
-
-        def mape(predictions, targets):
-            return np.mean(np.abs((predictions - targets) / targets)) * 100
-
-        def r_square(predictions, targets):
-            ss_res = np.sum((targets - predictions) ** 2)
-            ss_tot = np.sum((targets - np.mean(targets)) ** 2)
-            return 1 - (ss_res / (ss_tot))
-
-        # Output evaluation results
-        print("\n" + "=" * 60)
-        print("Original MH-MOE with TCN Experts Model Evaluation Results")
-        print("=" * 60)
-
-        print("\n=== Test Set Evaluation ===")
-        print(f"RMSE: {rmse(testPredict, testY_orig):.6f}")
-        print(f"MAE: {mae(testPredict, testY_orig):.6f}")
-        print(f"MAPE: {mape(testPredict, testY_orig):.6f}%")
-        print(f"R²: {r_square(testPredict, testY_orig):.6f}")
-
-        pd.DataFrame({
-            'y_true': testY_orig.flatten(),
-            'y_pred': testPredict.flatten()
-        }).to_csv('HSI_ATR_Net_predictions.csv', index=False)
-
-
-    if __name__ == '__main__':
-        TCN_time()
-
-    elapsed_time = time.time() - start_time
-    print(f"\nTotal runtime: {elapsed_time:.2f} seconds")

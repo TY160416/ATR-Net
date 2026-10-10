@@ -7,7 +7,6 @@ import matplotlib.patches as mpatches
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import LinearSegmentedColormap
 
-# ================= 环境与后端设置 =================
 try:
     matplotlib.use("tkagg")
 except ImportError:
@@ -17,17 +16,15 @@ warnings.filterwarnings("ignore")
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-# ================= SCI 期刊绘图全局参数设置 =================
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman']
-plt.rcParams['mathtext.fontset'] = 'stix'  # 保证数学符号和斜体与 Times 风格高度契合
+plt.rcParams['mathtext.fontset'] = 'stix'
 plt.rcParams['axes.linewidth'] = 2.0
 plt.rcParams['xtick.direction'] = 'in'
 plt.rcParams['ytick.direction'] = 'in'
 plt.rcParams['xtick.top'] = True
 plt.rcParams['ytick.right'] = True
 
-# ================= 文件配置与标签定义 =================
 file_mapping = {
     "BiLSTM": "HSI-BiLSTM_Predictions.csv",
     "Transformer": "HSI-Transformer_Predictions.csv",
@@ -61,7 +58,6 @@ colors_main = [
 model_names = list(file_mapping.keys())
 line_styles = ['--', '--', '--', '--', '-.', '-.', '--', '--', '--', ':', '-']
 
-# ================= 布局设置 (GridSpec) =================
 fig = plt.figure(figsize=(16, 12), dpi=300)
 gs = gridspec.GridSpec(2, 2, height_ratios=[1, 1])
 
@@ -72,7 +68,6 @@ ax3 = fig.add_subplot(gs[1, 1], projection='polar')
 y_true = None
 predictions = {}
 
-# ================= 数据读取 =================
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 for model_name, file_name in file_mapping.items():
@@ -99,7 +94,6 @@ y_true = y_true[:min_len]
 rmse_vals, mae_vals, mape_vals, r2_vals = [], [], [], []
 error_data_list = []
 
-# ================= 图(a): 整体预测结果曲线图 =================
 ax1.plot(y_true, color=color_true, linewidth=3.5, label='True Price', zorder=1)
 
 for i, model_name in enumerate(model_names):
@@ -122,7 +116,6 @@ ax1.set_xlabel('Time Step', fontsize=14, fontweight='bold')
 ax1.set_ylabel('Price', fontsize=14, fontweight='bold')
 ax1.grid(True, linestyle='--', alpha=0.5)
 
-# ================= 图(b): 云雨图 =================
 x_offset = 0.25
 for i, model_name in enumerate(model_names):
     model_data = error_data_list[i]
@@ -169,15 +162,12 @@ for ax in [ax1, ax2]:
     plt.setp(ax.get_xticklabels(), fontsize=12, fontweight='bold')
     plt.setp(ax.get_yticklabels(), fontsize=12, fontweight='bold')
 
-# ================= 图(c): 白至原色渐变南丁格尔图 (象限交替底色 + 边界界限) =================
 ax3.set_rorigin(-0.25)
 ax3.spines['polar'].set_linewidth(2.0)
 
-# 指标标签：R² 设置为斜体 LaTeX 格式
 metrics = ['RMSE', 'MAE', 'MAPE', 'R²']
 N_metrics, N_models = len(metrics), len(model_names)
 
-# 指标中心落在 45°、135°、225°、315°
 theta_metrics = np.linspace(0.0, 2 * np.pi, N_metrics, endpoint=False) + (np.pi / 4)
 
 sector_width = (2 * np.pi / N_metrics) * 0.85
@@ -192,7 +182,6 @@ norm_data = [
 ]
 raw_data = [rmse_vals, mae_vals, mape_vals, r2_vals]
 
-# 严格保留 4 位小数
 formats = ["{:.4f}", "{:.4f}", "{:.4f}%", "{:.4f}"]
 
 def draw_gradient_polar_bar(ax, angle, total_height, width, color_end, segments=30):
@@ -204,39 +193,31 @@ def draw_gradient_polar_bar(ax, angle, total_height, width, color_end, segments=
         ax.bar(angle, segment_height, width=width, bottom=bottom, color=color, edgecolor='none', alpha=0.9, zorder=3)
     ax.bar(angle, total_height, width=width, bottom=0, color='none', edgecolor='black', linewidth=0.8, zorder=4)
 
-# ================= 象限交替底色与边界线精细化设置 =================
 boundary_angles = np.array([0, np.pi / 2, np.pi, 3 * np.pi / 2])
 max_radius = 2.35
 
-# 1. 象限交替背景填充（若想恢复纯净白底，仅需注释此循环即可）
-# 采用极浅柔和的蓝灰调 #F3F5F8，透明度 0.55，在突出区块的同时保持克制
 for k in range(N_metrics):
-    if k % 2 == 1:  # 在 MAE (第二象限) 与 R² (第四象限) 区域填充背景色
+    if k % 2 == 1:
         center_quadrant = boundary_angles[k] + np.pi / 4
         ax3.bar(center_quadrant, max_radius, width=np.pi / 2, bottom=0,
                 color='#F3F5F8', alpha=0.55, edgecolor='none', zorder=1)
 
-# 2. 正交边界分割线（灰度中性深灰，线宽 1.4，点划线，穿透至外边界）
 for b_ang in boundary_angles:
     ax3.plot([b_ang, b_ang], [0, max_radius], color='#7F8C8D', linestyle='-.',
              linewidth=1.4, alpha=0.8, zorder=2)
 
-# ================= 绘制柱体及文字 =================
 for m_idx in range(N_metrics):
     center_theta = theta_metrics[m_idx]
     for c_idx in range(N_models):
         current_angle = center_theta + offsets[c_idx]
         bar_height = norm_data[m_idx][c_idx]
 
-        # 绘制渐变柱体
         draw_gradient_polar_bar(ax3, current_angle, bar_height, bar_width, colors_main[c_idx])
 
         val_text = formats[m_idx].format(raw_data[m_idx][c_idx])
 
-        # 角度换算并归一化到 [0, 360)
         angle_deg = np.degrees(current_angle) % 360
 
-        # 由于整体 45° 偏移，每个指标的 11 个模型均完全落在单一半球内
         if 90 < angle_deg < 270:
             rot_text = angle_deg - 180
             ha_val = 'right'
@@ -244,26 +225,20 @@ for m_idx in range(N_metrics):
             rot_text = angle_deg
             ha_val = 'left'
 
-        # 基准安全半径：确保即便长文本也能完整显示在最外侧，不与柱身冲突
         text_r = max(bar_height + 0.08, 1.08)
-
-        # 放大文字至 9.5pt 并加粗，锁定物理旋转锚点
         ax3.text(current_angle, text_r, val_text,
                  ha=ha_val, va='center',
                  fontsize=9.5, fontweight='bold', color='black',
                  rotation=rot_text, rotation_mode='anchor', zorder=5)
 
-# 指标标签刻度设置
 ax3.set_xticks(theta_metrics)
 ax3.set_xticklabels(metrics, fontsize=15, fontweight='bold')
 ax3.set_yticklabels([])
 ax3.grid(True, linestyle='--', alpha=0.35, zorder=1)
 
-# 轴范围与外边距
 ax3.set_ylim(0, max_radius)
 ax3.tick_params(axis='x', pad=28)
 
-# ================= 全局排版与顶部统一图例 =================
 bbox_props = dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.85, edgecolor="none")
 ax1.text(0.01, 0.96, '(a)', transform=ax1.transAxes, fontsize=16, fontweight='bold', va='top', ha='left', zorder=20,
          bbox=bbox_props)

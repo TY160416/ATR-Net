@@ -58,23 +58,20 @@ with tf.device('/GPU:0'):
             x_conv = self.conv1d(x_conv_exp)
             x_conv = tf.squeeze(x_conv, axis=2)
             x_conv = tf.nn.silu(x_conv)
-
-            # 投影生成选择性参数: dt, B, C
             x_dbl = self.x_proj(x_conv)
             dt, B_mat, C_mat = tf.split(x_dbl, [self.dt_rank, self.d_state, self.d_state], axis=-1)
 
             dt = self.dt_proj(dt)
             dt = tf.nn.softplus(dt)
 
-            A = -tf.exp(self.A_log)  # [d_inner, d_state]
+            A = -tf.exp(self.A_log)
 
-            # --- 离散化与选择性扫描 (Selective Scan) ---
-            # dA = exp(dt * A)
+
             dA = tf.exp(tf.einsum('bld,dn->bldn', dt, A))
-            # dB_u = dt * B * x
+
             dB_u = tf.einsum('bld,bln,bld->bldn', dt, B_mat, x_conv)
 
-            # 转置为 [L, B, d_inner, d_state] 适应 tf.scan
+
             dA_t = tf.transpose(dA, [1, 0, 2, 3])
             dB_u_t = tf.transpose(dB_u, [1, 0, 2, 3])
 
@@ -84,14 +81,14 @@ with tf.device('/GPU:0'):
 
             h = tf.scan(scan_step, (dA_t, dB_u_t), initializer=tf.zeros_like(dA_t[0]))
 
-            # 结果转置回 [B, L, d_inner, d_state]
+
             h = tf.transpose(h, [1, 0, 2, 3])
 
             # y = C * h + D * x
             y = tf.einsum('bldn,bln->bld', h, C_mat)
             y = y + x_conv * self.D
 
-            # 门控分支
+
             y = y * tf.nn.silu(z)
             out = self.out_proj(y)
             return out
@@ -105,10 +102,9 @@ with tf.device('/GPU:0'):
             self.seq_len = seq_len
             self.pred_len = pred_len
 
-            # 特征嵌入
+
             self.enc_embedding = tf.keras.layers.Dense(d_model)
 
-            # Mamba 核心层
             self.mamba = MambaBlock(
                 d_model=d_model,
                 d_state=d_ff,
@@ -116,7 +112,7 @@ with tf.device('/GPU:0'):
                 expand=expand
             )
 
-            # 预测输出层
+
             self.out_layer = tf.keras.layers.Dense(enc_in, use_bias=False)
 
         def call(self, x, training=False):
@@ -139,7 +135,7 @@ with tf.device('/GPU:0'):
 
 
     def Mamba_time():
-        # 数据加载及预处理
+
         dataframe = pd.read_csv('HSI_data1.csv', usecols=['Date', 'Close'], header=0, engine='python')
         dataframe['Date'] = pd.to_datetime(dataframe['Date'])
 
@@ -179,13 +175,13 @@ with tf.device('/GPU:0'):
         valX = np.reshape(valX, (valX.shape[0], valX.shape[1], 1))
         testX = np.reshape(testX, (testX.shape[0], testX.shape[1], 1))
 
-        # 实例化 Mamba 模型
+
         model = MambaModel(
             seq_len=look_back,
             pred_len=1,
             enc_in=1,
             d_model=32,
-            d_ff=16,  # 等价于 Mamba 中的 d_state
+            d_ff=16,
             d_conv=4,
             expand=2,
             dropout=0.1
@@ -204,7 +200,7 @@ with tf.device('/GPU:0'):
             metrics=['mae']
         )
 
-        # 通过传入占位符建立模型图
+
         _ = model(tf.convert_to_tensor(trainX[:32], dtype=tf.float32))
         model.summary()
 
